@@ -41,7 +41,7 @@ func TestIP2IPNet(t *testing.T) {
 			b = IP2IPNet(v.ip, uint32(i))
 			fmt.Println(k, "ip2ipnet bytes:", b)
 			if v.match == bytes.Equal(b, IPNet(v.ipmask)) {
-				fmt.Println("b:",k,b,IPNet(v.ipmask))
+				fmt.Println("b:", k, b, IPNet(v.ipmask))
 				match = true
 				break
 			}

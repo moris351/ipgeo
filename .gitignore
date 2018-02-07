@@ -1,5 +1,6 @@
 geoip.store
 GeoLite*.csv
 cmd/ipgeo
+cmd/log
 log/*
 

@@ -20,9 +20,13 @@ lDFLAGS=-ldflags "-X main.VerTag=${VERTAG} -X main.BuildTime=${BUILD_TIME}"
 all:
 	go build ${LDFLAGS} ./...;\
 	cd cmd;\
-	go build ${lDFLAGS} .;\
+	go build ${lDFLAGS} -o ipgeo .;\
 	cd -;
 run:
-	cmd/cmd
+	cd cmd;\
+	./ipgeo;\
+	cd -;\
+test:
+	go test
 clean:
 	go clean

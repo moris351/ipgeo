@@ -14,16 +14,17 @@ import (
 )
 
 const (
-	filename = "ipgeo.log"
-	rotate   = 10
+	rotate = 10
 )
 
 type logBot struct {
-	file *os.File
+	file     *os.File
+	filename string
 }
 
-func newLogBot() *logBot {
+func newLogBot(_filename string) *logBot {
 	fmt.Println("newLogBot")
+
 	// Log as JSON instead of the default ASCII formatter.
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
@@ -33,17 +34,19 @@ func newLogBot() *logBot {
 	//log.SetOutput(os.Stdout)
 
 	//just for debug
-	os.Remove("log/ipgeo.log")
+	//os.Remove("log/ipgeo.log")
 
 	lb := new(logBot)
 	logger := &lum.Logger{
-		Filename:   "log/" + filename,
+		Filename:   _filename,
 		MaxSize:    100, // megabytes
 		MaxBackups: 100,
 		MaxAge:     28, //days
 	}
+	logger.Rotate()
 	log.SetOutput(io.MultiWriter(logger, os.Stdout))
 	log.SetLevel(log.DebugLevel)
+	lb.filename = _filename
 
 	// Only log the warning severity or above.
 	go func() {
@@ -53,7 +56,6 @@ func newLogBot() *logBot {
 
 	return lb
 }
-
 func (lb *logBot) SetLevel(dl string) {
 	fmt.Printf(dl)
 	var l log.Level
@@ -88,7 +90,7 @@ func (lb *logBot) close() {
 func (lb *logBot) reset() {
 	lb.file.Close()
 	var err error
-	lb.file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+	lb.file, err = os.OpenFile(lb.filename, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	if err == nil {
 		//	log.SetOutput(file)
 		log.SetOutput(io.MultiWriter(lb.file, os.Stdout))

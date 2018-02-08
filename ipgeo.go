@@ -6,7 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
-	_ "fmt"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"io"
 	"os"
@@ -54,7 +54,7 @@ const (
 var lb *logBot = newLogBot("log/ipgeo.log")
 
 const MAX_BATCH_NUM = 1000000
-const MAX_RECORDS_NUM = 1000
+const MAX_RECORDS_NUM = 100000
 
 func Locator(dbname string) *IpLocator {
 
@@ -64,10 +64,7 @@ func Locator(dbname string) *IpLocator {
 		lb.Debug("boltdb open failed")
 		return nil
 	}
-	il := &IpLocator{}
-	il.DB = db
-
-	return il
+	return &IpLocator{db}
 }
 func Remove(dbname string) error {
 	err := os.Remove(dbname)
@@ -88,9 +85,6 @@ var ErrBucketNotFound = errors.New("Bucket not found")
 
 func (il *IpLocator) FindGeo(ip string) (string, error) {
 	start := time.Now()
-	defer func() {
-		lb.Info("FindGeo cost:", time.Since(start))
-	}()
 	city := ""
 	err := il.DB.View(func(tx *bolt.Tx) error {
 		bips := tx.Bucket([]byte(ipn))
@@ -129,24 +123,35 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 		return "", err
 	}
 
+	lb.Info("FindGeo cost:", time.Since(start))
 	return city, nil
 }
 
-func (il *IpLocator) Show() {
+func (il *IpLocator)Stats() {
+	lb.Debug("Stats")
+	go func() {
+		// Grab the initial stats.
+		prev := il.DB.Stats()
 
-	_ = il.DB.View(func(tx *bolt.Tx) error {
-		return tx.ForEach(func(name []byte, b *bolt.Bucket) error {
-			lb.Debug(string(name))
-			return b.ForEach(func(k, v []byte) error {
-				lb.Debug(string(k), string(v))
-				return nil
-			})
+		for {
+			// Wait for 10s.
+			time.Sleep(1 * time.Second)
 
-		})
+			// Grab the current stats and diff them.
+			stats := il.DB.Stats()
+			diff := stats.Sub(&prev)
 
-	})
+			// Encode stats to JSON and print to STDERR.
+			//json.NewEncoder(os.Stderr).Encode(diff)
 
-	return
+			jdiff,_:=json.Marshal(diff)
+			
+			// Save stats for the next loop.
+			prev = stats
+			fmt.Println(string(jdiff))
+		}
+	}()
+
 }
 
 func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
@@ -252,6 +257,7 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 	}
 
 	lb.Debug("begin update")
+	start := time.Now()
 	err = il.DB.Update(func(tx *bolt.Tx) error {
 
 		_, err := tx.CreateBucketIfNotExists([]byte(ipn))
@@ -276,10 +282,10 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 				return errors.New("not found")
 			}
 
-			for i := 0; i < MAX_RECORDS_NUM&& err != io.EOF; i++ {
+			for i := 0; i < MAX_RECORDS_NUM && err != io.EOF; i++ {
 				cls, err := reader.Read()
 				if err == io.EOF {
-					j = 100000
+					j = MAX_BATCH_NUM
 					break
 				}
 
@@ -292,7 +298,7 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 				}
 
 				ipnet := IPNet(cls[0])
-				lb.Debug("ipnet:", ipnet)
+				//lb.Debug("ipnet:", ipnet)
 				if ipnet == nil {
 					continue
 				}
@@ -310,6 +316,7 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 		lb.Debug(err)
 		return err
 	}
+	lb.Info("update ips data cost:", time.Since(start))
 	return nil
 }
 

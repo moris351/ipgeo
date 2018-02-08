@@ -12,6 +12,7 @@ var (
 	findgeo=flag.String("findgeo","","find ip geo info")
 	findfile=flag.String("findfile","","find ip from file")
 	stats=flag.Bool("stats",false,"real time show db stats")
+	getips=flag.String("getips","","get ips from a csv file and output to a file")
 
 )
 
@@ -36,6 +37,7 @@ func main(){
 	case *initdb==true:
 		ipgeo.Remove(DBNAME)
 		l:=ipgeo.Locator(DBNAME)
+		defer l.Close()
 		if l==nil{
 			return
 		}
@@ -47,13 +49,16 @@ func main(){
 			return
 		}
 
-		l.Close()
 	case len(*findgeo)!=0:
 		l:=ipgeo.Locator(DBNAME)
-		if ;l==nil{
+		defer l.Close()
+		if l==nil{
 			return
 		}
 
+		if *stats==true{
+			l.Stats()
+		}
 		v:=*findgeo
 		geo,err:=l.FindGeo(v)
 		if err!=nil{
@@ -61,13 +66,21 @@ func main(){
 		}else{
 			fmt.Println(v,geo)
 		}
-		if *stats==true{
-			l.Stats()
+	case len(*getips)!=0:
+		if err:=ipgeo.GetIps(*getips,"ips");err!=nil{
+			fmt.Println(err)
 		}
-		l.Close()
+	case len(*findfile)!=0:
+		l:=ipgeo.Locator(DBNAME)
+		defer l.Close()
+		
+		if err:=l.FindIps(*findfile,"geo");err!=nil{
+			fmt.Println(err)
+		}
 	default:
 		l:=ipgeo.Locator(DBNAME)
-		if ;l==nil{
+		defer l.Close()
+		if l==nil{
 			return
 		}
 		l.Stats()

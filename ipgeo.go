@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"time"
+	"strings"
 )
 
 type Continent struct {
@@ -318,6 +319,100 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 	}
 	lb.Info("update ips data cost:", time.Since(start))
 	return nil
+}
+func(il *IpLocator) FindIps(input string,output string)error{
+	lb.Debug("FindIps")
+	lfi, err := os.Open(input)
+	defer lfi.Close()
+	if err != nil {
+		lb.Debug("open %s failed with err: %v\n", input, err)
+		return err
+	}
+	lfo, err := os.Create(output)
+	defer lfo.Close()
+	if err != nil {
+		lb.Debug("open %s failed with err: %v\n", output, err)
+		return err
+	}
+
+	reader := csv.NewReader(lfi)
+	writer := csv.NewWriter(lfo)
+	i:=0
+	for{
+		//if i>100 { break}
+		line,err:=reader.Read()
+		if err == io.EOF{
+			break
+		}
+		if err != nil{
+			return err
+		}
+
+		ip:=line[0]
+
+		geo,err:=il.FindGeo(ip)
+		writer.Write([]string{geo})
+		i++
+
+	}
+
+	writer.Flush()
+	return nil
+
+}
+
+
+func GetIps(input string,output string)error{
+
+	lb.Debug("GetIps")
+	lfi, err := os.Open(input)
+	defer lfi.Close()
+	if err != nil {
+		lb.Debug("open %s failed with err: %v\n", input, err)
+		return err
+	}
+	lfo, err := os.Create(output)
+	defer lfo.Close()
+	if err != nil {
+		lb.Debug("open %s failed with err: %v\n", output, err)
+		return err
+	}
+
+	reader := csv.NewReader(lfi)
+	// lb.Debug(reader.Read())
+	reader.Read() // discard first line
+	if err != nil {
+		lb.Fatal("Reading %s failed with err:%v\n", input, err)
+	}
+	writer := csv.NewWriter(lfo)
+	if err != nil {
+		lb.Fatal("Reading %s failed with err:%v\n", output, err)
+	}
+	i:=0
+	for{
+		//if i>100 { break}
+		line,err:=reader.Read()
+		if err == io.EOF{
+			break
+		}
+		if err != nil{
+			return err
+		}
+
+		ip:=line[0]
+		n:=strings.LastIndex(ip,".")
+		ip=ip[0:n]
+
+		ip=fmt.Sprintf("%s%s",ip,".9")
+
+		writer.Write([]string{ip})
+		i++
+
+	}
+
+	writer.Flush()
+	return nil
+
 }
 
 /*

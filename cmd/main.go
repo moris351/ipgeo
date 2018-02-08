@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"github.com/moris351/ipgeo"
 	"flag"
+	"time"
 	_"strconv"
 
 )
@@ -45,9 +46,11 @@ func main(){
 		if *stats==true{
 			l.Stats()
 		}
+		start := time.Now()
 		if err:=l.InitDB(LOCATION_FILE_NAME,BLOCK_FILE_NAME);err!=nil{
 			return
 		}
+		fmt.Println("findgeo cost:", time.Since(start))
 
 	case len(*findgeo)!=0:
 		l:=ipgeo.Locator(DBNAME)
@@ -60,12 +63,15 @@ func main(){
 			l.Stats()
 		}
 		v:=*findgeo
+
+		start := time.Now()
 		geo,err:=l.FindGeo(v)
 		if err!=nil{
 			fmt.Println("FindGeo return err:",err)
 		}else{
 			fmt.Println(v,geo)
 		}
+		fmt.Println("findgeo cost:", time.Since(start))
 	case len(*getips)!=0:
 		if err:=ipgeo.GetIps(*getips,"ips");err!=nil{
 			fmt.Println(err)
@@ -74,9 +80,11 @@ func main(){
 		l:=ipgeo.Locator(DBNAME)
 		defer l.Close()
 		
-		if err:=l.FindIps(*findfile,"geo");err!=nil{
+		start := time.Now()
+		if err:=l.FindFile(*findfile,"geo");err!=nil{
 			fmt.Println(err)
 		}
+		fmt.Println("findfile cost:", time.Since(start))
 	default:
 		l:=ipgeo.Locator(DBNAME)
 		defer l.Close()

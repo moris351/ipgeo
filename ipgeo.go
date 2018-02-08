@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 	"strings"
+	"bufio"
 )
 
 type Continent struct {
@@ -85,12 +86,10 @@ var ErrRecordNotFound = errors.New("Record not found")
 var ErrBucketNotFound = errors.New("Bucket not found")
 
 func (il *IpLocator) FindGeo(ip string) (string, error) {
-	start := time.Now()
 	city := ""
 	err := il.DB.View(func(tx *bolt.Tx) error {
 		bips := tx.Bucket([]byte(ipn))
 		if bips == nil {
-			lb.Debug("1")
 			return ErrBucketNotFound
 		}
 		j := 0
@@ -99,7 +98,6 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 			b := IP2IPNet(ip, uint32(j))
 			code = bips.Get(b)
 			if code != nil {
-				lb.Debug("2")
 				break
 			}
 		}
@@ -109,12 +107,10 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 
 		bcits := tx.Bucket([]byte(bktsn[citsn]))
 		if bcits == nil {
-			lb.Debug("3")
 			return ErrBucketNotFound
 		}
 		cit := bcits.Get(code)
 		if cit == nil {
-			lb.Debug("4")
 			return ErrRecordNotFound
 		}
 		city = string(cit)
@@ -124,8 +120,9 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 		return "", err
 	}
 
-	lb.Info("FindGeo cost:", time.Since(start))
-	return city, nil
+
+	//fmt.Println("FindGeo:city:",city)
+		return city, nil
 }
 
 func (il *IpLocator)Stats() {
@@ -229,6 +226,7 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 				}
 
 				jcit, err := json.Marshal(&City{cls[0], cls[10], cls[6]})
+				//fmt.Println(string(jcit))
 				if err != nil {
 					return err
 				}
@@ -320,8 +318,8 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 	lb.Info("update ips data cost:", time.Since(start))
 	return nil
 }
-func(il *IpLocator) FindIps(input string,output string)error{
-	lb.Debug("FindIps")
+func(il *IpLocator) FindFile(input string,output string)error{
+	lb.Debug("FindFile")
 	lfi, err := os.Open(input)
 	defer lfi.Close()
 	if err != nil {
@@ -336,7 +334,7 @@ func(il *IpLocator) FindIps(input string,output string)error{
 	}
 
 	reader := csv.NewReader(lfi)
-	writer := csv.NewWriter(lfo)
+	writer := bufio.NewWriter(lfo)
 	i:=0
 	for{
 		//if i>100 { break}
@@ -351,7 +349,8 @@ func(il *IpLocator) FindIps(input string,output string)error{
 		ip:=line[0]
 
 		geo,err:=il.FindGeo(ip)
-		writer.Write([]string{geo})
+		buf:=fmt.Sprintf("%s %s \n",ip,geo)
+		writer.Write([]byte(buf))
 		i++
 
 	}

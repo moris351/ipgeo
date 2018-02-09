@@ -1,6 +1,7 @@
 package ipgeo
 
 import (
+	"bufio"
 	_ "bytes"
 	_ "encoding/binary"
 	"encoding/csv"
@@ -10,9 +11,8 @@ import (
 	"github.com/boltdb/bolt"
 	"io"
 	"os"
-	"time"
 	"strings"
-	"bufio"
+	"time"
 )
 
 type Continent struct {
@@ -55,18 +55,24 @@ const (
 
 var lb *logBot = newLogBot("log/ipgeo.log")
 
-const MAX_BATCH_NUM = 1000000
-const MAX_RECORDS_NUM = 100000
+const MAX_BATCH_NUM = 1e6
+const MAX_RECORDS_NUM = 1e5
+
+var locator *IpLocator 
 
 func Locator(dbname string) *IpLocator {
 
 	lb.SetLevel("debug")
+	if locator != nil {
+		return locator
+	}
 	db, err := bolt.Open(dbname, 0600, nil)
 	if err != nil {
 		lb.Debug("boltdb open failed")
 		return nil
 	}
-	return &IpLocator{db}
+	locator=&IpLocator{db}
+	return locator
 }
 func Remove(dbname string) error {
 	err := os.Remove(dbname)
@@ -120,12 +126,11 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 		return "", err
 	}
 
-
 	//fmt.Println("FindGeo:city:",city)
-		return city, nil
+	return city, nil
 }
 
-func (il *IpLocator)Stats() {
+func (il *IpLocator) Stats() {
 	lb.Debug("Stats")
 	go func() {
 		// Grab the initial stats.
@@ -142,8 +147,8 @@ func (il *IpLocator)Stats() {
 			// Encode stats to JSON and print to STDERR.
 			//json.NewEncoder(os.Stderr).Encode(diff)
 
-			jdiff,_:=json.Marshal(diff)
-			
+			jdiff, _ := json.Marshal(diff)
+
 			// Save stats for the next loop.
 			prev = stats
 			fmt.Println(string(jdiff))
@@ -318,7 +323,7 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 	lb.Info("update ips data cost:", time.Since(start))
 	return nil
 }
-func(il *IpLocator) FindFile(input string,output string)error{
+func (il *IpLocator) FindFile(input string, output string) error {
 	lb.Debug("FindFile")
 	lfi, err := os.Open(input)
 	defer lfi.Close()
@@ -335,21 +340,21 @@ func(il *IpLocator) FindFile(input string,output string)error{
 
 	reader := csv.NewReader(lfi)
 	writer := bufio.NewWriter(lfo)
-	i:=0
-	for{
+	i := 0
+	for {
 		//if i>100 { break}
-		line,err:=reader.Read()
-		if err == io.EOF{
+		line, err := reader.Read()
+		if err == io.EOF {
 			break
 		}
-		if err != nil{
+		if err != nil {
 			return err
 		}
 
-		ip:=line[0]
+		ip := line[0]
 
-		geo,err:=il.FindGeo(ip)
-		buf:=fmt.Sprintf("%s %s \n",ip,geo)
+		geo, err := il.FindGeo(ip)
+		buf := fmt.Sprintf("%s %s \n", ip, geo)
 		writer.Write([]byte(buf))
 		i++
 
@@ -360,8 +365,7 @@ func(il *IpLocator) FindFile(input string,output string)error{
 
 }
 
-
-func GetIps(input string,output string)error{
+func GetIps(input string, output string) error {
 
 	lb.Debug("GetIps")
 	lfi, err := os.Open(input)
@@ -387,22 +391,22 @@ func GetIps(input string,output string)error{
 	if err != nil {
 		lb.Fatal("Reading %s failed with err:%v\n", output, err)
 	}
-	i:=0
-	for{
+	i := 0
+	for {
 		//if i>100 { break}
-		line,err:=reader.Read()
-		if err == io.EOF{
+		line, err := reader.Read()
+		if err == io.EOF {
 			break
 		}
-		if err != nil{
+		if err != nil {
 			return err
 		}
 
-		ip:=line[0]
-		n:=strings.LastIndex(ip,".")
-		ip=ip[0:n]
+		ip := line[0]
+		n := strings.LastIndex(ip, ".")
+		ip = ip[0:n]
 
-		ip=fmt.Sprintf("%s%s",ip,".9")
+		ip = fmt.Sprintf("%s%s", ip, ".9")
 
 		writer.Write([]string{ip})
 		i++
@@ -414,19 +418,3 @@ func GetIps(input string,output string)error{
 
 }
 
-/*
-read [18918 en EU Europe CY Cyprus 04 Ammochostos   Protaras  Asia/Famagusta],len=13
-k=0,item=18918
-k=1,item=en
-k=2,item=EU
-k=3,item=Europe
-k=4,item=CY
-k=5,item=Cyprus
-k=6,item=04
-k=7,item=Ammochostos
-k=8,item=
-k=9,item=
-k=10,item=Protaras
-k=11,item=
-k=12,item=Asia/Famagusta
-*/

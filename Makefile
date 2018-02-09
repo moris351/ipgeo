@@ -20,7 +20,10 @@ lDFLAGS=-ldflags "-X main.VerTag=${VERTAG} -X main.BuildTime=${BUILD_TIME}"
 all:
 	go build ${LDFLAGS} ./...;\
 	cd cmd;\
-	go build ${lDFLAGS} -o ipgeo .;\
+	go build ${lDFLAGS} -o ipgeo main.go;\
+	cd -;\
+	cd client/go;\
+	go build ${lDFLAGS} -o soclient soclient.go;\
 	cd -;
 run:
 	cd cmd;\

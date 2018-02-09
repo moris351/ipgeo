@@ -1,3 +1,6 @@
 cmd/*
 !cmd/main.go
+client/go/*
+!client/go/soclient.go
+
 

@@ -2,6 +2,7 @@ package ipgeo
 
 import(
 	"fmt"
+	"io"
 	"github.com/moris351/ipgeo/message"
 	"net"
 	"github.com/golang/protobuf/proto"
@@ -32,25 +33,31 @@ func(s *sockets)Listen(p string) {
 }
 
 func (s *sockets)Serve(conn net.Conn) {
+	buf := make([]byte, 1512)
+
 	for {
-		buf := make([]byte, 512)
 		len, err := conn.Read(buf)
+		if err== io.EOF{
+			fmt.Println("end of client")
+			return 
+		}
 		if err != nil {
 			fmt.Println("Error reading", err.Error())
 			return 
 		}
 
-		fmt.Printf("Received data: %v", string(buf[:len]))
+		fmt.Printf("Received data: %x\n", buf[:len])
 		if len!=0{
 			l:=Locator(DBNAME)
 
-			var msg *message.Query
-			err:=proto.Unmarshal(buf,msg)
+			msg:=&message.Query{}
+			err:=proto.Unmarshal(buf[0:len],msg)
 			if err!=nil{
 				fmt.Println("proto Unmarshal failed,err:",err)
 				return
 			}
 
+			fmt.Println("msg:",msg)
 			geo,err:=l.FindGeo(msg.Ip)
 			if err!=nil{
 				fmt.Println("Receive FindGeo failed,err:",err)
@@ -58,6 +65,7 @@ func (s *sockets)Serve(conn net.Conn) {
 			}
 			
 			ans:=&message.Answer{geo}
+			fmt.Println("ans:",ans)
 			bans,err:=proto.Marshal(ans)
 			if err!=nil{
 				fmt.Println("proto Marshal failed,err:",err)

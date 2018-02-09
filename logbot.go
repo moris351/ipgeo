@@ -57,7 +57,7 @@ func newLogBot(_filename string) *logBot {
 	return lb
 }
 func (lb *logBot) SetLevel(dl string) {
-	fmt.Printf(dl)
+	fmt.Println(dl)
 	var l log.Level
 	switch dl {
 	case "debug":

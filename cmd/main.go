@@ -14,7 +14,8 @@ var (
 	findfile = flag.String("findfile", "", "find ip from file")
 	stats    = flag.Bool("stats", false, "real time show db stats")
 	getips   = flag.String("getips", "", "get ips from a csv file and output to a file")
-	serveat = flag.String("serveat", ":5000", "start a socket server,listen at port")
+	serve = flag.Bool("serve", false, "start a socket server")
+	listen = flag.String("listen", ":5000", "listen at port")
 )
 
 const LOCATION_FILE_NAME = "GeoLite2-City-Locations.csv"
@@ -86,11 +87,11 @@ func main() {
 			fmt.Println(err)
 		}
 		fmt.Println("findfile cost:", time.Since(start))
-	case len(*serveat)!=0:
+	case *serve:
 		l:=ipgeo.Locator(DBNAME)
 		defer l.Close()
 
-		ipgeo.ServeAt(*serveat)
+		ipgeo.ServeAt(*listen)
 	
 	default:
 		l := ipgeo.Locator(DBNAME)

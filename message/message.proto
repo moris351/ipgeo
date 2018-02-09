@@ -5,7 +5,6 @@ package message;
 message query{
 	string ip=1;
 }
- 
 
 message answer{
 	string city=1;

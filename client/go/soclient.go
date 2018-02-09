@@ -28,31 +28,34 @@ func main() {
 	}
 
 	reader := bufio.NewReader(ff)
-	buf:=make([]byte,512)
+	buf:=make([]byte,1512)
 	i:=0
 	for {
-		if i>1{break}
+		//if i>10{break}
 		i++
-		n,err:=reader.Read(buf)
+		str,_,err:=reader.ReadLine()
 		if err!=nil{
 			fmt.Println("read failed,err:",err)
 			return 
 		}
 
-		query:=&message.Query{string(buf[0:n])}
+		fmt.Println("str:",string(str))
+		query:=&message.Query{string(str)}
 		bquery,err:=proto.Marshal(query)
 		if err!=nil{
 			fmt.Println("Marshal failed,err:",err)
 			return
 		}
 		
-		n, err = conn.Write(bquery)
+		n, err := conn.Write(bquery)
+		if err != nil{
+			fmt.Println("write failed,err:",err,",n:",n)
+		}
 		n, err = conn.Read(buf)
 		if err != nil{
 			fmt.Println("write failed,err:",err)
 			return
 		}
-		fmt.Println("buf:",string(buf))
 
 		ans:=&message.Answer{}
 		err=proto.Unmarshal(buf[0:n],ans)
@@ -62,7 +65,7 @@ func main() {
 			return
 		}
 		fmt.Println("ans:",ans)
-		time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Millisecond)
 
 	}
 }

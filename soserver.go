@@ -36,7 +36,7 @@ func (s *sockets)Serve(conn net.Conn) {
 	buf := make([]byte, 1512)
 
 	for {
-		len, err := conn.Read(buf)
+		n, err := conn.Read(buf)
 		if err== io.EOF{
 			fmt.Println("end of client")
 			return 
@@ -46,12 +46,12 @@ func (s *sockets)Serve(conn net.Conn) {
 			return 
 		}
 
-		fmt.Printf("Received data: %x\n", buf[:len])
-		if len!=0{
+		fmt.Printf("Received data: %x\n", buf[:n])
+		if n!=0{
 			l:=Locator(DBNAME)
 
 			msg:=&message.Query{}
-			err:=proto.Unmarshal(buf[0:len],msg)
+			err:=proto.Unmarshal(buf[0:n],msg)
 			if err!=nil{
 				fmt.Println("proto Unmarshal failed,err:",err)
 				return
@@ -61,7 +61,8 @@ func (s *sockets)Serve(conn net.Conn) {
 			geo,err:=l.FindGeo(msg.Ip)
 			if err!=nil{
 				fmt.Println("Receive FindGeo failed,err:",err)
-				return
+				geo="not found"
+
 			}
 			
 			ans:=&message.Answer{geo}
@@ -70,6 +71,7 @@ func (s *sockets)Serve(conn net.Conn) {
 			if err!=nil{
 				fmt.Println("proto Marshal failed,err:",err)
 			}
+			fmt.Printf("len of bans:%d, bans:%x\n",len(bans),bans)
 
 			if _,err:=conn.Write(bans);err!=nil{
 				fmt.Println("Receive answer failed,err:",err)

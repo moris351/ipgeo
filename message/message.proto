@@ -1,12 +1,17 @@
 syntax = "proto3";
 
 package message;
-
-message query{
+enum StatusType{
+	OK=0;
+	ERR=1;
+	NOTFOUND=2;
+}
+message Query{
 	string ip=1;
 }
 
-message answer{
-	string city=1;
+message Answer{
+	StatusType status=1; 
+	string city=2;
 }
 

@@ -2,6 +2,8 @@ cmd/*
 !cmd/main.go
 client/go/*
 !client/go/soclient.go
+client/goweb/*
+!client/goweb/webclient.go
 message/*
 !message/message.proto
 

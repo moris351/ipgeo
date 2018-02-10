@@ -25,6 +25,9 @@ all:
 	cd client/go;\
 	go build ${lDFLAGS} -o soclient soclient.go;\
 	cd -;
+	cd client/goweb;\
+	go build ${lDFLAGS} -o webclient webclient.go;\
+	cd -;
 run:
 	cd cmd;\
 	./ipgeo;\

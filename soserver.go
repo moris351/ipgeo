@@ -47,11 +47,11 @@ func (s *sockets)Serve(conn net.Conn) {
 		}
 
 		fmt.Printf("Received data: %x\n", buf[:n])
-		if n!=0{
+		//if n!=0{
 			l:=Locator(DBNAME)
 
 			msg:=&message.Query{}
-			err:=proto.Unmarshal(buf[0:n],msg)
+			err=proto.Unmarshal(buf[0:n],msg)
 			if err!=nil{
 				fmt.Println("proto Unmarshal failed,err:",err)
 				return
@@ -59,25 +59,24 @@ func (s *sockets)Serve(conn net.Conn) {
 
 			fmt.Println("msg:",msg)
 			geo,err:=l.FindGeo(msg.Ip)
+			status:=message.StatusType_OK
 			if err!=nil{
 				fmt.Println("Receive FindGeo failed,err:",err)
-				geo="not found"
+				status=message.StatusType_ERR
+			}	
+			ans:=&message.Answer{Status:status,City:geo}
 
-			}
-			
-			ans:=&message.Answer{geo}
 			fmt.Println("ans:",ans)
 			bans,err:=proto.Marshal(ans)
 			if err!=nil{
 				fmt.Println("proto Marshal failed,err:",err)
 			}
-			fmt.Printf("len of bans:%d, bans:%x\n",len(bans),bans)
 
 			if _,err:=conn.Write(bans);err!=nil{
 				fmt.Println("Receive answer failed,err:",err)
 				return
 			}
-		}
+		//}
 
 	}
 }

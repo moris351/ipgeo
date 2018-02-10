@@ -21,13 +21,13 @@ all:
 	go build ${LDFLAGS} ./...;\
 	cd cmd;\
 	go build ${lDFLAGS} -o ipgeo main.go;\
-	cd -;\
+	cd ..;\
 	cd client/go;\
 	go build ${lDFLAGS} -o soclient soclient.go;\
-	cd -;
+	cd ..;
 	cd client/goweb;\
 	go build ${lDFLAGS} -o webclient webclient.go;\
-	cd -;
+	cd ..;
 run:
 	cd cmd;\
 	./ipgeo;\

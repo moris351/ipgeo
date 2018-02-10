@@ -15,15 +15,22 @@ import (
 	"time"
 )
 
+type Geo struct {
+	GeoCode string `json:geo_code`
+	CtnCode string `json:ctn_code`
+	CtrCode string `json:ctr_code`
+	SubCode string `json:sub_code`
+	CitName string `json:cit_name`
+}
 type Continent struct {
 	Code string `json:code`
 	Name string `json:name`
 }
 
 type Country struct {
-	Code          string `json:code`
-	Name          string `json:name`
-	ContinentCode string `json:ctn_code`
+	Code    string `json:code`
+	Name    string `json:name`
+	CtnCode string `json:ctn_code`
 }
 type Sub struct {
 	Code    string `json:code`
@@ -32,9 +39,9 @@ type Sub struct {
 }
 
 type City struct {
-	Code     string `json:code`
-	Name     string `json:name`
-	CityCode string `json:cit_code`
+	Code    string `json:code`
+	Name    string `json:name`
+	CitCode string `json:cit_code`
 }
 
 type IpLocator struct {
@@ -43,10 +50,11 @@ type IpLocator struct {
 
 const ipn = "__ips"
 
-var bktsn = []string{"__ctns", "__ctrs", "__subs", "__cits"}
+var bktsn = []string{"__geos","__ctns", "__ctrs", "__subs", "__cits"}
 
 const (
-	ctnsn = iota
+	geosn = iota
+	ctnsn 
 	ctrsn
 	subsn
 	citsn
@@ -58,7 +66,7 @@ var lb *logBot = newLogBot("log/ipgeo.log")
 const MAX_BATCH_NUM = 1e6
 const MAX_RECORDS_NUM = 1e5
 
-var locator *IpLocator 
+var locator *IpLocator
 
 func Locator(dbname string) *IpLocator {
 
@@ -71,7 +79,7 @@ func Locator(dbname string) *IpLocator {
 		lb.Debug("boltdb open failed")
 		return nil
 	}
-	locator=&IpLocator{db}
+	locator = &IpLocator{db}
 	return locator
 }
 func Remove(dbname string) error {
@@ -92,7 +100,7 @@ var ErrRecordNotFound = errors.New("Record not found")
 var ErrBucketNotFound = errors.New("Bucket not found")
 
 func (il *IpLocator) FindGeo(ip string) (string, error) {
-	city := ""
+	geoinfo:= ""
 	err := il.DB.View(func(tx *bolt.Tx) error {
 		bips := tx.Bucket([]byte(ipn))
 		if bips == nil {
@@ -111,15 +119,15 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 			return ErrRecordNotFound
 		}
 
-		bcits := tx.Bucket([]byte(bktsn[citsn]))
-		if bcits == nil {
+		bgeos := tx.Bucket([]byte(bktsn[geosn]))
+		if bgeos == nil {
 			return ErrBucketNotFound
 		}
-		cit := bcits.Get(code)
-		if cit == nil {
+		geo := bgeos.Get(code)
+		if geo == nil {
 			return ErrRecordNotFound
 		}
-		city = string(cit)
+		geoinfo = string(geo)
 		return nil
 	})
 	if err != nil {
@@ -127,7 +135,7 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 	}
 
 	//fmt.Println("FindGeo:city:",city)
-	return city, nil
+	return geoinfo, nil
 }
 
 func (il *IpLocator) Stats() {
@@ -198,48 +206,62 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 			//lb.Printf("k=%d,item=%s\n", k, item)
 			//}
 
+			/*
+				read [18918 en EU Europe CY Cyprus 04 Ammochostos   Protaras  Asia/Famagusta],len=13
+				k=0,item=18918
+				k=1,item=en
+				k=2,item=EU
+				k=3,item=Europe
+				k=4,item=CY
+				k=5,item=Cyprus
+				k=6,item=04
+				k=7,item=Ammochostos
+				k=8,item=
+				k=9,item=
+				k=10,item=Protaras
+				k=11,item=
+				k=12,item=Asia/Famagusta
+			*/
 			if err == nil {
 				if len(cls[2]) == 0 {
 					continue
 				}
 
-				jctn, err := json.Marshal(&Continent{cls[2], cls[3]})
-				if err != nil {
-					return err
-				}
-				err = bkts[ctnsn].Put([]byte(cls[2]), jctn)
-				if err != nil {
-					return err
-				}
-
-				jctr, err := json.Marshal(&Country{cls[4], cls[5], cls[2]})
-				if err != nil {
-					return err
-				}
-				bkts[ctrsn].Put([]byte(cls[4]), jctr)
-				if err != nil {
-					return err
-				}
-
-				jsub, err := json.Marshal(&Sub{cls[6], cls[7], cls[4]})
-				if err != nil {
-					return err
-				}
-				bkts[subsn].Put([]byte(cls[6]), jsub)
-				if err != nil {
-					return err
-				}
-
-				jcit, err := json.Marshal(&City{cls[0], cls[10], cls[6]})
+				jgeo, err := json.Marshal(&Geo{cls[0], cls[2], cls[4], cls[6], cls[10]})
 				//fmt.Println(string(jcit))
 				if err != nil {
 					return err
 				}
-				bkts[citsn].Put([]byte(cls[0]), jcit)
+				bkts[geosn].Put([]byte(cls[0]), jgeo)
 				if err != nil {
 					return err
 				}
 
+				err = bkts[ctnsn].Put([]byte(cls[2]), []byte(cls[3]))
+				if err != nil {
+					return err
+				}
+
+				if len(cls[4]) > 0 {
+					err = bkts[ctrsn].Put([]byte(cls[4]), []byte(cls[5]))
+					if err != nil {
+						return err
+					}
+				}
+
+				if len(cls[6]) > 0 {
+					err = bkts[subsn].Put([]byte(cls[6]), []byte(cls[7]))
+					if err != nil {
+						return err
+					}
+				}
+
+				if len(cls[10]) > 0 {
+					err = bkts[citsn].Put([]byte(cls[0]), []byte(cls[10]))
+					if err != nil {
+						return err
+					}
+				}
 			}
 
 		}
@@ -417,4 +439,3 @@ func GetIps(input string, output string) error {
 	return nil
 
 }
-

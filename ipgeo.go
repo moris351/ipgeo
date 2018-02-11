@@ -22,6 +22,12 @@ type Geo struct {
 	SubCode string `json:sub_code`
 	CitName string `json:cit_name`
 }
+type GeoInfo struct {
+	Geo
+	CtnName string
+	CtrName string
+	SubName string
+}
 type Continent struct {
 	Code string `json:code`
 	Name string `json:name`
@@ -50,11 +56,11 @@ type IpLocator struct {
 
 const ipn = "__ips"
 
-var bktsn = []string{"__geos","__ctns", "__ctrs", "__subs", "__cits"}
+var bktsn = []string{"__geos", "__ctns", "__ctrs", "__subs", "__cits"}
 
 const (
 	geosn = iota
-	ctnsn 
+	ctnsn
 	ctrsn
 	subsn
 	citsn
@@ -100,8 +106,10 @@ var ErrRecordNotFound = errors.New("Record not found")
 var ErrBucketNotFound = errors.New("Bucket not found")
 
 func (il *IpLocator) FindGeo(ip string) (string, error) {
-	geoinfo:= ""
+	var geo Geo
+	var ctn, ctr, sub string
 	err := il.DB.View(func(tx *bolt.Tx) error {
+		var err error
 		bips := tx.Bucket([]byte(ipn))
 		if bips == nil {
 			return ErrBucketNotFound
@@ -123,19 +131,62 @@ func (il *IpLocator) FindGeo(ip string) (string, error) {
 		if bgeos == nil {
 			return ErrBucketNotFound
 		}
-		geo := bgeos.Get(code)
-		if geo == nil {
+		bgeo := bgeos.Get(code)
+		if bgeo == nil {
 			return ErrRecordNotFound
 		}
-		geoinfo = string(geo)
+		if err := json.Unmarshal(bgeo, &geo); err != nil {
+			fmt.Println("1")
+			return err
+		}
+
+		ctn, err = il.GetValue(tx, ctnsn, geo.CtnCode)
+		if err != nil {
+			fmt.Println("2")
+			return err
+		}
+
+		ctr, err = il.GetValue(tx, ctrsn, geo.CtrCode)
+		if err != nil {
+			fmt.Println("3")
+			return err
+		}
+
+		if len(geo.SubCode) != 0 {
+			sub, err = il.GetValue(tx, subsn, geo.CtrCode+geo.SubCode)
+			if err != nil {
+				fmt.Println("4")
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
 
+	gi := &GeoInfo{geo, ctn, ctr, sub}
+	bgi, err := json.Marshal(gi)
+	if err != nil {
+		return "", err
+	}
+
 	//fmt.Println("FindGeo:city:",city)
-	return geoinfo, nil
+	return string(bgi), nil
+}
+
+func (il *IpLocator) GetValue(tx *bolt.Tx, bsn int, key string) (string, error) {
+
+	bs := tx.Bucket([]byte(bktsn[bsn]))
+	if bs == nil {
+		return "", ErrBucketNotFound
+	}
+	bv := bs.Get([]byte(key))
+	if bv == nil {
+		return "", ErrRecordNotFound
+	}
+
+	return string(bv), nil
 }
 
 func (il *IpLocator) Stats() {
@@ -237,11 +288,13 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 					return err
 				}
 
+				//Ctn
 				err = bkts[ctnsn].Put([]byte(cls[2]), []byte(cls[3]))
 				if err != nil {
 					return err
 				}
 
+				//Ctr
 				if len(cls[4]) > 0 {
 					err = bkts[ctrsn].Put([]byte(cls[4]), []byte(cls[5]))
 					if err != nil {
@@ -249,19 +302,14 @@ func (il *IpLocator) InitDB(locFilename string, blockFilename string) error {
 					}
 				}
 
+				//Sub
 				if len(cls[6]) > 0 {
-					err = bkts[subsn].Put([]byte(cls[6]), []byte(cls[7]))
+					err = bkts[subsn].Put([]byte(cls[4]+cls[6]), []byte(cls[7]))
 					if err != nil {
 						return err
 					}
 				}
 
-				if len(cls[10]) > 0 {
-					err = bkts[citsn].Put([]byte(cls[0]), []byte(cls[10]))
-					if err != nil {
-						return err
-					}
-				}
 			}
 
 		}

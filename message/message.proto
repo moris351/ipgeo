@@ -12,6 +12,10 @@ message Query{
 
 message Answer{
 	StatusType status=1; 
-	string city=2;
+	string ip=2;
+	string continent=3;
+	string country=4;
+	string subvision=5;
+	string city=6;
 }
 
